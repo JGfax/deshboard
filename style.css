@@ -1,7 +1,8 @@
-/body {
+/* Estilo geral */
+body {
     font-family: 'Inter', sans-serif; /* Usando Inter como padrão */
     background-color: #f3f4f6; /* gray-100 do Tailwind */
-    padding: 2rem;
+    padding: 2rem 1rem; /* Ajustando padding para melhor visualização em telas pequenas */
     color: #1f2937; /* gray-800 */
 }
 
@@ -23,10 +24,95 @@
     margin-top: 0.5rem;
 }
 
+/* ========================================= */
+/* NOVOS ESTILOS PARA OS CARDS DE RESUMO */
+/* ========================================= */
+
+/* Container geral para todas as grades de resumo */
+.summary-container {
+    max-width: 1024px;
+    margin: 0 auto;
+}
+
+/* Layout dos Cards de Resumo - Linhas de 3 e 2 */
+.summary-grid {
+    display: grid;
+    /* Padrão mobile: 1 coluna */
+    grid-template-columns: repeat(1, 1fr); 
+    gap: 1.5rem;
+    margin-bottom: 1.5rem; /* Espaçamento entre as linhas de cards */
+}
+
+/* Layout para telas médias+ (Top Row: 3 cards) */
+@media (min-width: 768px) {
+    .summary-grid.top-row {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+/* Layout para telas médias+ (Bottom Row: 2 cards centralizados) */
+.summary-grid.bottom-row-wrapper {
+    /* Define o wrapper para centralizar o grid interno */
+    max-width: 100%; /* Ocupa a largura total do summary-container */
+    display: flex;
+    justify-content: center; /* Centraliza o conteúdo (a grade) */
+}
+
+@media (min-width: 768px) {
+    .summary-grid.bottom-row {
+        /* Garante que o grid interno tenha a largura necessária para 2 colunas */
+        width: 66.66%; /* 2/3 de 1024px (aproximadamente) */
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.5rem;
+    }
+}
+
+
+.summary-card {
+    background-color: #ffffff;
+    padding: 1.5rem;
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    border-left: 5px solid; /* Adiciona barra de cor lateral */
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.summary-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Cores das bordas laterais */
+.summary-card-total { border-left-color: #4f46e5; /* Índigo */ }
+.summary-card-pending { border-left-color: #f59e0b; /* Amarelo/Amber */ }
+.summary-card-in-progress { border-left-color: #3b82f6; /* Azul */ }
+.summary-card-completed { border-left-color: #10b981; /* Verde/Emerald */ }
+.summary-card-canceled { border-left-color: #ef4444; /* Vermelho/Red */ }
+
+
+.summary-card .value {
+    font-size: 3.5rem; /* Aumentado um pouco o tamanho para maior destaque */
+    font-weight: 900; /* Mais bold */
+    line-height: 1;
+    margin-bottom: 0.5rem;
+}
+
+.summary-card .label {
+    font-size: 1rem;
+    font-weight: 500;
+    color: #4b5563;
+    text-transform: uppercase;
+}
+
+/* ========================================= */
+/* ESTILOS EXISTENTES PARA GRÁFICOS E TABELA */
+/* ========================================= */
+
 /* Layout dos Gráficos */
 .charts-container {
-    max-width: 1024px; /* max-w-5xl */
-    margin: 0 auto;
+    max-width: 1024px;
+    margin: 2rem auto 0 auto; /* Espaçamento ajustado */
     display: grid;
     grid-template-columns: 1fr;
     gap: 2rem;
@@ -42,14 +128,14 @@
 .chart-card {
     background-color: #ffffff;
     padding: 1.5rem;
-    border-radius: 0.75rem; /* rounded-xl */
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-lg */
-    border: 1px solid #e5e7eb; /* border-gray-200 */
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e5e7eb;
 }
 
 .chart-card h2 {
-    font-size: 1.25rem; /* xl */
-    font-weight: 600; /* semibold */
+    font-size: 1.25rem;
+    font-weight: 600;
     margin-bottom: 1rem;
     text-align: center;
 }
@@ -57,11 +143,11 @@
 /* Configuração da altura do Canvas */
 .canvas-wrapper {
     position: relative;
-    height: 256px; /* h-64 */
+    height: 256px;
 }
 @media (min-width: 768px) {
     .canvas-wrapper {
-        height: 320px; /* md:h-80 */
+        height: 320px;
     }
 }
 
@@ -83,20 +169,20 @@
 }
 
 .data-table th {
-    background-color: #eef2ff; /* indigo-50 */
+    background-color: #eef2ff; 
     font-weight: 600;
-    color: #374151; /* gray-700 */
+    color: #374151;
 }
 
 .data-table tbody tr:hover {
-    background-color: #f9fafb; /* gray-50 */
+    background-color: #f9fafb;
 }
 
 /* Indicador de Carregamento (Spinner) */
 .loading-indicator {
-    display: none; /* Escondido por padrão, PHP/JS o exibe */
+    display: none;
     border: 4px solid #f3f3f3;
-    border-top: 4px solid #3b82f6; /* blue-500 */
+    border-top: 4px solid #3b82f6;
     border-radius: 50%;
     width: 40px;
     height: 40px;

@@ -2,14 +2,18 @@
 // Inclui o arquivo de conexão
 include 'conexao.php';
 
-// Inicializa a variável de dados do PHP
+// Inicializa variáveis de dados
 $chamadosData = [];
-$totalChamados = 0;
+$statusCounts = [
+    'Total' => 0,
+    'Pendente' => 0,
+    'Em andamento' => 0,
+    'Concluído' => 0,
+    'Cancelado' => 0
+];
 
 // =========================================================================
-// 1. BUSCA DOS DADOS PRINCIPAIS (Simulação de JOINs usando apenas a tabela de chamados)
-// Na prática, você faria um JOIN com tecnicos, categorias e prioridades
-// para obter os nomes diretamente no SQL, mas aqui simulamos o resultado.
+// 1. BUSCA DOS DADOS PRINCIPAIS E CONTAGEM DOS STATUS
 // =========================================================================
 
 // Query para buscar todos os chamados
@@ -19,15 +23,17 @@ $result = $conn->query($sql);
 if ($result && $result->num_rows > 0) {
     while($row = $result->fetch_assoc()) {
         $chamadosData[] = $row;
-        $totalChamados++;
+        
+        // Contagem para os Cards de Resumo
+        $statusCounts['Total']++;
+        if (isset($statusCounts[$row['status']])) {
+            $statusCounts[$row['status']]++;
+        }
     }
 }
 
 // =========================================================================
-// 2. BUSCA DAS TABELAS DE LOOKUP (Técnicos, Categorias, Prioridades)
-// Na aplicação real, estes dados seriam necessários para mapear os IDs aos nomes.
-// Aqui, eles estão hardcoded para fins de demonstração, mas o código a seguir
-// mostra como você faria a busca.
+// 2. TABELAS DE LOOKUP (Hardcoded para demonstração, na vida real seria outra consulta SQL)
 // =========================================================================
 $lookup = [
     'tecnicos' => [1 => 'Marcos Silva', 2 => 'Patrícia Mendes', 3 => 'José Oliveira', 4 => 'Carla Santos', 5 => 'Rafael Almeida', 6 => 'Thiago Moreira'],
@@ -63,11 +69,47 @@ $conn->close();
 
     <header class="header">
         <h1>Dashboard de Chamados (Helpdesk)</h1>
-        <p>Visualização estatística dos tickets do sistema.</p>
+        <p>Visão gerencial do status dos tickets.</p>
     </header>
 
-    <!-- Indicador de Carregamento (Agora usando o estilo do CSS) -->
+    <!-- Indicador de Carregamento (No PHP real, é bom ter) -->
     <div id="loading-indicator" class="loading-indicator"></div>
+
+    <!-- Container dos Cards de Resumo (PHP) -->
+    <div id="summary-cards" style="display: none;">
+        
+        <!-- PRIMEIRA LINHA: Total, Pendentes, Em Andamento -->
+        <div class="summary-grid top-row">
+            <div class="summary-card summary-card-total">
+                <div class="value"><?php echo $statusCounts['Total']; ?></div>
+                <div class="label">Total de Chamados</div>
+            </div>
+            
+            <div class="summary-card summary-card-pending">
+                <div class="value"><?php echo $statusCounts['Pendente']; ?></div>
+                <div class="label">Pendentes</div>
+            </div>
+            
+            <div class="summary-card summary-card-in-progress">
+                <div class="value"><?php echo $statusCounts['Em andamento']; ?></div>
+                <div class="label">Em Andamento</div>
+            </div>
+        </div>
+
+        <!-- SEGUNDA LINHA: Concluídos, Cancelados -->
+        <div class="summary-grid bottom-row">
+            <div class="summary-card summary-card-completed">
+                <div class="value"><?php echo $statusCounts['Concluído']; ?></div>
+                <div class="label">Concluídos</div>
+            </div>
+            
+            <div class="summary-card summary-card-canceled">
+                <div class="value"><?php echo $statusCounts['Cancelado']; ?></div>
+                <div class="label">Cancelados</div>
+            </div>
+        </div>
+    </div>
+
 
     <!-- Contêiner principal para centralizar e limitar a largura na tela -->
     <div id="charts-container" class="charts-container" style="display: none;">
@@ -134,11 +176,13 @@ $conn->close();
         function showLoading() {
             document.getElementById('loading-indicator').style.display = 'block';
             document.getElementById('charts-container').style.display = 'none';
+            document.getElementById('summary-cards').style.display = 'none'; 
         }
 
         function hideLoading() {
             document.getElementById('loading-indicator').style.display = 'none';
             document.getElementById('charts-container').style.display = 'grid';
+            document.getElementById('summary-cards').style.display = 'block';
         }
 
         // --- FUNÇÃO PARA PROCESSAR OS DADOS E AGREGAR CONTAGENS ---
@@ -160,12 +204,9 @@ $conn->close();
 
         // --- FUNÇÃO PRINCIPAL DE INICIALIZAÇÃO ---
         function initializeCharts() {
-            // No ambiente PHP, os dados já foram carregados antes da renderização do HTML,
-            // mas simularemos um atraso de renderização para dar a sensação de carregamento.
             showLoading();
 
             setTimeout(() => {
-                // O processo de busca do banco de dados já ocorreu no lado PHP
                 const fetchedData = chamadosData;
                 
                 hideLoading();
@@ -258,7 +299,7 @@ $conn->close();
                         }
                     }
                 });
-            }, 500); // Pequeno atraso para mostrar o spinner
+            }, 500); 
         }
 
         // Inicia a renderização
