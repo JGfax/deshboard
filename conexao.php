@@ -5,9 +5,9 @@
     $pass ="Home@spSENAI2025!";
     $bd = "helpdesk";
 
-    $conexao = mysql_connect ($host, $user, $pass, $bd);
+    $conexao = mysqli_connect($host, $user, $pass, $bd);
 
-    $conexao(!$conexao) {
-        die("falha na conexao" . mysql_error());
+    if (!$conexao) {
+        die("falha na conexao" . mysqli_connect_error());
     }
 ?>
