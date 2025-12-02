@@ -67,7 +67,13 @@ body {
     }
 }
 
-
+ .summary-grid.bottom-row {
+        /* Garante que o grid interno tenha a largura necessária para 2 colunas */
+        text-align: center;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.5rem;
+        margin-left: 280px;
+ }
 .summary-card {
     background-color: #ffffff;
     padding: 1.5rem;
