@@ -5,9 +5,16 @@
     $pass ="Home@spSENAI2025!";
     $bd = "helpdesk";
 
-    $conexao = mysqli_connect($host, $user, $pass, $bd);
+    $conn = new mysqli($host, $user, $pass, $bd);
 
-    if (!$conexao) {
-        die("falha na conexao" . mysqli_connect_error());
-    };
+// Verifica a conexão
+if ($conn->connect_error) {
+    // Para ambientes de produção, use apenas "Erro de Conexão."
+    die("Falha na Conexão com o Banco de Dados: " . $conn->connect_error);
+}
+
+// Define o charset para evitar problemas com acentuação
+$conn->set_charset("utf8mb4");
+
+// A variável $conn agora contém a conexão ativa com o banco.
 ?>
