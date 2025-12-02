@@ -274,7 +274,7 @@ $conn->close();
 
                 const lineCtx = document.getElementById('lineChart').getContext('2d');
                 new Chart(lineCtx, {
-                    type: 'doughnut',
+                    type: 'pie',
                     data: {
                         labels: categoryLabels,
                         datasets: [{
