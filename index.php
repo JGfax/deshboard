@@ -113,17 +113,20 @@ $conn->close();
 
     <!-- Contêiner principal para centralizar e limitar a largura na tela -->
     <div id="charts-container" class="charts-container" style="display: none;">
+<div class="chart-card">
 
-        <!-- GRÁFICO 1: Chamados por Status (Bar Chart) -->
-        <div class="chart-card">
+    <div class="graficos">
+
+        <!-- Gráfico 1 -->
+        <div class="grafico-item">
             <h2 style="color: #4f46e5;">Chamados por Status Atual</h2>
             <div class="canvas-wrapper">
                 <canvas id="barChart"></canvas>
             </div>
         </div>
 
-        <!-- GRÁFICO 2: Chamados por Categoria (Doughnut Chart) -->
-        <div class="chart-card">
+        <!-- Gráfico 2 -->
+        <div class="grafico-item">
             <h2 style="color: #10b981;">Distribuição por Categoria</h2>
             <div class="canvas-wrapper">
                 <canvas id="lineChart"></canvas>
@@ -131,6 +134,9 @@ $conn->close();
         </div>
 
     </div>
+
+</div>
+
 
     <!-- Tabela de Chamados Recentes para visualização -->
     <div class="max-w-5xl mx-auto">

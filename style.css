@@ -116,12 +116,13 @@ body {
 /* ========================================= */
 
 /* Layout dos Gráficos */
-.charts-container {
-    max-width: 1024px;
-    margin: 2rem auto 0 auto; /* Espaçamento ajustado */
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 2rem;
+.graficos {
+    display: flex;
+    gap: 20px;
+}
+
+.grafico-item {
+    flex: 1;
 }
 
 @media (min-width: 768px) {
@@ -133,6 +134,7 @@ body {
 /* Card dos Gráficos */
 .chart-card {
     background-color: #ffffff;
+    display: flex;
     padding: 1.5rem;
     border-radius: 0.75rem;
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
