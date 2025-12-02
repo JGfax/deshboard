@@ -9,5 +9,5 @@
 
     if (!$conexao) {
         die("falha na conexao" . mysqli_connect_error());
-    }
+    };
 ?>

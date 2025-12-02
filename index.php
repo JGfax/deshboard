@@ -1,280 +1,343 @@
-<?php
-// index.php
-require_once 'conexao.php';
-
-// ----------------------
-// Funções auxiliares
-// ----------------------
-function get_count($mysqli, $where = '') {
-    $sql = "SELECT COUNT(*) as cnt FROM chamados " . ($where ? " WHERE $where" : "");
-    $res = $mysqli->query($sql);
-    return $res ? (int)$res->fetch_assoc()['cnt'] : 0;
-}
-
-// Total
-$total_chamados = get_count($mysqli);
-
-// Contagens por status (usadas nos cards)
-$pendentes    = get_count($mysqli, "status = 'Pendente'");
-$em_andamento = get_count($mysqli, "status = 'Em Andamento' OR status = 'Em andamento' OR status = 'EmAndamento'");
-$concluidos   = get_count($mysqli, "status = 'Concluído' OR status = 'Concluídos' OR status = 'Concluido'");
-$cancelados   = get_count($mysqli, "status = 'Cancelado' OR status = 'Cancelados'");
-
-// ----------------------
-// Dados para gráficos
-// ----------------------
-// 1) Distribuição por status (geral) - pega qualquer status existente no DB
-$status_data = [];
-$status_q = $mysqli->query("SELECT status, COUNT(*) as total FROM chamados GROUP BY status");
-if ($status_q) {
-    while ($row = $status_q->fetch_assoc()) {
-        $status_data[] = $row;
-    }
-}
-
-// 2) Chamados por categoria
-$category_data = [];
-$cat_q = $mysqli->query("
-    SELECT c.nome AS category, COUNT(*) AS total
-    FROM chamados ch
-    LEFT JOIN categorias c ON ch.categoria_id = c.id
-    GROUP BY c.nome
-    ORDER BY total DESC
-");
-if ($cat_q) {
-    while ($row = $cat_q->fetch_assoc()) {
-        $category_data[] = $row;
-    }
-}
-
-// 3) Chamados por prioridade
-$priority_data = [];
-$prio_q = $mysqli->query("
-    SELECT p.nome AS prioridade, COUNT(*) AS total
-    FROM chamados ch
-    LEFT JOIN prioridades p ON ch.prioridade_id = p.id
-    GROUP BY p.nome
-    ORDER BY total DESC
-");
-if ($prio_q) {
-    while ($row = $prio_q->fetch_assoc()) {
-        $priority_data[] = $row;
-    }
-}
-
-// ----------------------
-// Tabela: chamados mais recentes
-// ----------------------
-$recent = [];
-$recent_q = $mysqli->query("
-    SELECT ch.id, ch.titulo, COALESCE(t.nome, '-') AS tecnico, COALESCE(c.nome, '-') AS categoria,
-           ch.status, COALESCE(p.nome, '-') AS prioridade, ch.data_abertura
-    FROM chamados ch
-    LEFT JOIN tecnicos t ON ch.tecnico_id = t.id
-    LEFT JOIN categorias c ON ch.categoria_id = c.id
-    LEFT JOIN prioridades p ON ch.prioridade_id = p.id
-    ORDER BY ch.data_abertura DESC
-    LIMIT 10
-");
-if ($recent_q) {
-    while ($row = $recent_q->fetch_assoc()) {
-        $recent[] = $row;
-    }
-}
-
-// Fechar conexão (opcional — ainda podemos usar $mysqli mais tarde)
-$mysqli->close();
-
-// Para o Chart.js vamos transformar os arrays em JSON
-$status_labels = array_map(function($r){ return $r['status']; }, $status_data);
-$status_values = array_map(function($r){ return (int)$r['total']; }, $status_data);
-
-$cat_labels = array_map(function($r){ return $r['category'] ? $r['category'] : 'Sem categoria'; }, $category_data);
-$cat_values = array_map(function($r){ return (int)$r['total']; }, $category_data);
-
-$prio_labels = array_map(function($r){ return $r['prioridade'] ? $r['prioridade'] : 'Sem prioridade'; }, $priority_data);
-$prio_values = array_map(function($r){ return (int)$r['total']; }, $priority_data);
-?>
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Dashboard Helpdesk - Dark Premium</title>
-  <link rel="stylesheet" href="style.css">
-  <!-- Chart.js CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard Helpdesk - Dark Premium (Simulado)</title>
+    <!-- Tailwind CSS CDN para estilização rápida e responsiva -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN para gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Configuração do Tailwind para o tema Dark Premium
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'dark-bg': '#1e293b', // Slate-800
+                        'dark-card': '#334155', // Slate-700
+                        'dark-text': '#f1f5f9', // Slate-100
+                        'accent-blue': '#3b82f6', // Blue-500
+                        'accent-green': '#10b981', // Emerald-500
+                        'accent-yellow': '#f59e0b', // Amber-500
+                        'accent-red': '#ef4444', // Red-500
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Estilo customizado para a tabela e cores dos cards/gráficos -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a; /* Slate-900 */
+            color: #f1f5f9; /* Slate-100 */
+        }
+        /* Estilo para a barra de rolagem da tabela */
+        .table-wrapper::-webkit-scrollbar {
+            height: 8px;
+        }
+        .table-wrapper::-webkit-scrollbar-thumb {
+            background: #475569; /* Slate-600 */
+            border-radius: 10px;
+        }
+        .table-wrapper::-webkit-scrollbar-track {
+            background: #1e293b; /* Slate-800 */
+        }
+        /* Cor de fundo para o Chart.js */
+        canvas {
+            background-color: #334155; /* Slate-700 */
+            padding: 1rem;
+            border-radius: 0.5rem;
+        }
+    </style>
 </head>
-<body>
-  <header class="topbar">
-    <div class="brand">
-      <h1>HelpDesk - Dashboard</h1>
-      <p class="subtitle">Visão geral dos chamados</p>
-    </div>
-    <div class="header-right">
-      <div class="user">Admin</div>
-    </div>
-  </header>
+<body class="min-h-screen">
+    <header class="bg-dark-card shadow-lg p-4 mb-6 sticky top-0 z-10">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="brand">
+                <h1 class="text-2xl font-bold text-accent-blue">HelpDesk - Dashboard</h1>
+                <p class="text-sm text-gray-400">Visão geral dos chamados (Dados Simulados)</p>
+            </div>
+            <div class="text-sm px-4 py-2 rounded-full bg-accent-blue/20 text-accent-blue font-semibold">
+                Admin
+            </div>
+        </div>
+    </header>
 
-  <main class="container">
-    <!-- CARDS SUPERIORES -->
-    <section class="cards-row">
-      <div class="card big">
-        <div class="card-title">Total de Chamados</div>
-        <div class="card-value"><?php echo $total_chamados; ?></div>
-      </div>
+    <main class="max-w-7xl mx-auto px-4 pb-12">
+        <!-- CARDS SUPERIORES -->
+        <section class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <!-- Total -->
+            <div id="card-total" class="bg-dark-card p-6 rounded-xl shadow-xl border-b-4 border-accent-blue transition duration-300 hover:shadow-2xl">
+                <div class="text-sm font-medium text-gray-400">Total de Chamados</div>
+                <div class="text-4xl font-extrabold mt-1"></div>
+            </div>
 
-      <div class="card big">
-        <div class="card-title">Pendentes</div>
-        <div class="card-value"><?php echo $pendentes; ?></div>
-      </div>
+            <!-- Pendentes -->
+            <div id="card-pendentes" class="bg-dark-card p-6 rounded-xl shadow-xl border-b-4 border-accent-yellow transition duration-300 hover:shadow-2xl">
+                <div class="text-sm font-medium text-gray-400">Pendentes</div>
+                <div class="text-4xl font-extrabold mt-1 text-accent-yellow"></div>
+            </div>
 
-      <div class="card big">
-        <div class="card-title">Em Andamento</div>
-        <div class="card-value"><?php echo $em_andamento; ?></div>
-      </div>
-    </section>
+            <!-- Em Andamento -->
+            <div id="card-andamento" class="bg-dark-card p-6 rounded-xl shadow-xl border-b-4 border-accent-blue transition duration-300 hover:shadow-2xl">
+                <div class="text-sm font-medium text-gray-400">Em Andamento</div>
+                <div class="text-4xl font-extrabold mt-1 text-accent-blue"></div>
+            </div>
+            
+            <!-- Concluídos -->
+            <div id="card-concluidos" class="bg-dark-card p-6 rounded-xl shadow-xl border-b-4 border-accent-green transition duration-300 hover:shadow-2xl">
+                <div class="text-sm font-medium text-gray-400">Concluídos</div>
+                <div class="text-4xl font-extrabold mt-1 text-accent-green"></div>
+            </div>
+        </section>
 
-    <!-- CARDS INFERIORES -->
-    <section class="cards-row">
-      <div class="card large">
-        <div class="card-title">Concluídos</div>
-        <div class="card-value"><?php echo $concluidos; ?></div>
-      </div>
+        <!-- GRÁFICOS -->
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- Gráfico de Status -->
+            <div class="bg-dark-card p-6 rounded-xl shadow-xl">
+                <h3 class="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">Distribuição por Status</h3>
+                <canvas id="pieStatus" class="h-80"></canvas>
+            </div>
 
-      <div class="card large">
-        <div class="card-title">Cancelados</div>
-        <div class="card-value"><?php echo $cancelados; ?></div>
-      </div>
-    </section>
+            <!-- Gráfico de Categorias -->
+            <div class="bg-dark-card p-6 rounded-xl shadow-xl">
+                <h3 class="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">Chamados por Categoria</h3>
+                <canvas id="barCategoria" class="h-80"></canvas>
+            </div>
+        </section>
 
-    <!-- GRÁFICOS -->
-    <section class="charts-row">
-      <div class="chart-card">
-        <h3>Status dos Chamados</h3>
-        <canvas id="pieStatus"></canvas>
-      </div>
+        <!-- TABELA DE CHAMADOS RECENTES -->
+        <section class="bg-dark-card p-6 rounded-xl shadow-xl">
+            <h3 class="text-xl font-semibold mb-4 border-b border-gray-700 pb-2">Chamados mais Recentes (Top 10)</h3>
+            <div class="table-wrapper overflow-x-auto rounded-lg">
+                <table class="min-w-full divide-y divide-gray-700">
+                    <thead class="bg-gray-700">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-300">ID</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-300">Título</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-300">Técnico</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-300">Categoria</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-300">Status</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-300">Prioridade</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-300">Abertura</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recent-calls-body" class="divide-y divide-gray-800 bg-dark-bg">
+                        <!-- Linhas serão preenchidas por JS -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
 
-      <div class="chart-card">
-        <h3>Chamados por Categoria</h3>
-        <canvas id="barCategoria"></canvas>
-      </div>
-    </section>
+    <!-- SCRIPTS: Dados simulados e inicialização dos gráficos -->
+    <script>
+        // Função para formatar data (simulando a função PHP date)
+        const formatDate = (isoString) => {
+            try {
+                const date = new Date(isoString);
+                return date.toLocaleDateString('pt-BR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                }).replace(',', '');
+            } catch (e) {
+                return isoString;
+            }
+        };
 
-    <!-- TABELA DE CHAMADOS -->
-    <section class="table-card">
-      <h3>Chamados mais recentes</h3>
-      <div class="table-wrapper">
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Título</th>
-              <th>Técnico</th>
-              <th>Categoria</th>
-              <th>Status</th>
-              <th>Prioridade</th>
-              <th>Data de abertura</th>
-            </tr>
-          </thead>
-          <tbody>
-            <?php if (count($recent) === 0): ?>
-              <tr><td colspan="7" style="text-align:center">Nenhum chamado encontrado.</td></tr>
-            <?php else: ?>
-              <?php foreach ($recent as $r): ?>
-                <tr>
-                  <td><?php echo htmlspecialchars($r['id']); ?></td>
-                  <td><?php echo htmlspecialchars($r['titulo']); ?></td>
-                  <td><?php echo htmlspecialchars($r['tecnico']); ?></td>
-                  <td><?php echo htmlspecialchars($r['categoria']); ?></td>
-                  <td><?php echo htmlspecialchars($r['status']); ?></td>
-                  <td><?php echo htmlspecialchars($r['prioridade']); ?></td>
-                  <td><?php 
-                        $d = $r['data_abertura'];
-                        // tenta formatar data para dd/mm/YYYY se possível
-                        $fmt = strtotime($d) ? date('d/m/Y H:i', strtotime($d)) : $d;
-                        echo htmlspecialchars($fmt);
-                      ?></td>
-                </tr>
-              <?php endforeach; ?>
-            <?php endif; ?>
-          </tbody>
-        </table>
-      </div>
-    </section>
+        // ----------------------------------------------------
+        // DADOS SIMULADOS (Substituem as consultas MySQL/PHP)
+        // ----------------------------------------------------
+        const simulatedData = {
+            // Contagens dos Cards
+            totalChamados: 125,
+            pendentes: 30,
+            emAndamento: 55,
+            concluidos: 35,
+            cancelados: 5,
+            
+            // Dados para Gráfico 1: Status (Pie Chart)
+            statusData: [
+                { status: 'Pendente', total: 30 },
+                { status: 'Em Andamento', total: 55 },
+                { status: 'Concluído', total: 35 },
+                { status: 'Cancelado', total: 5 }
+            ],
 
-    <!-- RODAPÉ -->
-    <footer class="page-footer">
-      <div>
-        Projeto Helpdesk • Estilo Dark Premium
-      </div>
-      <div class="ia-note">
-        <strong>IA usada:</strong> Códigos PHP, CSS, estrutura do dashboard, consultas SQL e Chart.js gerados/ajustados com auxílio de IA.
-      </div>
-    </footer>
-  </main>
+            // Dados para Gráfico 2: Categoria (Bar Chart)
+            categoryData: [
+                { category: 'Hardware', total: 40 },
+                { category: 'Software', total: 35 },
+                { category: 'Rede', total: 25 },
+                { category: 'Acesso/Permissão', total: 20 },
+                { category: 'Outros', total: 5 },
+            ],
 
-  <!-- SCRIPTS: dados do PHP para JS -->
-  <script>
-    // Dados vindos do PHP
-    const statusLabels = <?php echo json_encode($status_labels, JSON_UNESCAPED_UNICODE); ?>;
-    const statusValues = <?php echo json_encode($status_values); ?>;
+            // Dados para a Tabela: Chamados Recentes
+            recentCalls: [
+                { id: 101, titulo: 'Falha de login no sistema X', tecnico: 'João S.', categoria: 'Acesso/Permissão', status: 'Pendente', prioridade: 'Alta', data_abertura: '2025-12-02T10:00:00Z' },
+                { id: 100, titulo: 'Troca de monitor do setor financeiro', tecnico: 'Maria T.', categoria: 'Hardware', status: 'Em Andamento', prioridade: 'Média', data_abertura: '2025-12-02T09:30:00Z' },
+                { id: 99, titulo: 'Instalação de Office 365', tecnico: 'João S.', categoria: 'Software', status: 'Concluído', prioridade: 'Baixa', data_abertura: '2025-12-01T17:45:00Z' },
+                { id: 98, titulo: 'Rede lenta no 3º andar', tecnico: 'Pedro H.', categoria: 'Rede', status: 'Em Andamento', prioridade: 'Alta', data_abertura: '2025-12-01T15:20:00Z' },
+                { id: 97, titulo: 'Bug no relatório de vendas', tecnico: 'Maria T.', categoria: 'Software', status: 'Pendente', prioridade: 'Média', data_abertura: '2025-12-01T11:00:00Z' },
+                { id: 96, titulo: 'Configuração de VPN', tecnico: 'Pedro H.', categoria: 'Rede', status: 'Concluído', prioridade: 'Baixa', data_abertura: '2025-11-30T10:00:00Z' },
+                { id: 95, titulo: 'Teclado com defeito', tecnico: 'João S.', categoria: 'Hardware', status: 'Em Andamento', prioridade: 'Média', data_abertura: '2025-11-29T14:00:00Z' },
+                { id: 94, titulo: 'Atualização do sistema operacional', tecnico: 'Maria T.', categoria: 'Software', status: 'Pendente', prioridade: 'Baixa', data_abertura: '2025-11-29T09:00:00Z' },
+                { id: 93, titulo: 'Impressora offline', tecnico: 'Pedro H.', categoria: 'Hardware', status: 'Concluído', prioridade: 'Alta', data_abertura: '2025-11-28T16:30:00Z' },
+                { id: 92, titulo: 'Acesso negado à pasta compartilhada', tecnico: 'João S.', categoria: 'Acesso/Permissão', status: 'Em Andamento', prioridade: 'Média', data_abertura: '2025-11-28T14:00:00Z' },
+            ]
+        };
 
-    const catLabels = <?php echo json_encode($cat_labels, JSON_UNESCAPED_UNICODE); ?>;
-    const catValues = <?php echo json_encode($cat_values); ?>;
-
-    // PIE: Status
-    const ctxPie = document.getElementById('pieStatus').getContext('2d');
-    const pieStatus = new Chart(ctxPie, {
-      type: 'pie',
-      data: {
-        labels: statusLabels,
-        datasets: [{
-          label: 'Status',
-          data: statusValues,
-          // Let Chart.js pick colors automatically; do not set explicit colors per style rules.
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          legend: { position: 'bottom', labels: { color: '#d6d6d6' } },
-          tooltip: { enabled: true }
+        // Função para aplicar os dados aos cards
+        function renderCards(data) {
+            document.querySelector('#card-total .text-4xl').textContent = data.totalChamados;
+            document.querySelector('#card-pendentes .text-4xl').textContent = data.pendentes;
+            document.querySelector('#card-andamento .text-4xl').textContent = data.emAndamento;
+            document.querySelector('#card-concluidos .text-4xl').textContent = data.concluidos;
+            // Se quisesse incluir cancelados, teria que adicionar outro card
         }
-      }
-    });
 
-    // BAR: Categoria
-    const ctxBar = document.getElementById('barCategoria').getContext('2d');
-    const barCategoria = new Chart(ctxBar, {
-      type: 'bar',
-      data: {
-        labels: catLabels,
-        datasets: [{
-          label: 'Chamados',
-          data: catValues,
-          // Chart.js will apply default colors
-        }]
-      },
-      options: {
-        indexAxis: 'y',
-        responsive: true,
-        plugins: {
-          legend: { display: false },
-          tooltip: { enabled: true }
-        },
-        scales: {
-          x: {
-            ticks: { color: '#cfcfcf' },
-            grid: { color: 'rgba(255,255,255,0.05)' }
-          },
-          y: {
-            ticks: { color: '#cfcfcf' },
-            grid: { color: 'rgba(255,255,255,0.03)' }
-          }
+        // Função para preencher a tabela
+        function renderTable(data) {
+            const tbody = document.getElementById('recent-calls-body');
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-400">Nenhum chamado encontrado.</td></tr>';
+                return;
+            }
+
+            const rows = data.map(r => {
+                const statusClass = r.status === 'Concluído' ? 'text-accent-green' :
+                                    r.status === 'Pendente' ? 'text-accent-yellow' :
+                                    'text-accent-blue';
+                
+                return `
+                    <tr class="hover:bg-gray-800 transition duration-150">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-300">${r.id}</td>
+                        <td class="px-6 py-4 max-w-xs truncate text-sm text-gray-400">${r.titulo}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">${r.tecnico}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">${r.categoria}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold ${statusClass}">${r.status}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">${r.prioridade}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-400">${formatDate(r.data_abertura)}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            tbody.innerHTML = rows;
         }
-      }
-    });
-  </script>
+
+
+        // ----------------------------------------------------
+        // INICIALIZAÇÃO DOS GRÁFICOS
+        // ----------------------------------------------------
+        function initializeCharts(data) {
+            // Transformar dados para o formato Chart.js
+            const statusLabels = data.statusData.map(r => r.status);
+            const statusValues = data.statusData.map(r => r.total);
+            const catLabels = data.categoryData.map(r => r.category);
+            const catValues = data.categoryData.map(r => r.total);
+
+            // Cores base para os gráficos (ajustadas para o tema dark)
+            const backgroundColors = [
+                '#f59e0b', // Pendente (Amarelo)
+                '#3b82f6', // Em Andamento (Azul)
+                '#10b981', // Concluído (Verde)
+                '#ef4444', // Cancelado (Vermelho)
+                '#6b7280', // Outros (Cinza)
+                '#a855f7', // Roxo
+                '#ec4899', // Rosa
+            ];
+
+            // PIE: Status
+            const ctxPie = document.getElementById('pieStatus').getContext('2d');
+            new Chart(ctxPie, {
+                type: 'doughnut',
+                data: {
+                    labels: statusLabels,
+                    datasets: [{
+                        label: 'Status',
+                        data: statusValues,
+                        backgroundColor: backgroundColors.slice(0, statusLabels.length),
+                        borderColor: '#0f172a', // Cor de fundo do body
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { 
+                            position: 'bottom', 
+                            labels: { color: '#d6d6d6', padding: 20 } 
+                        },
+                        tooltip: { 
+                            enabled: true,
+                            backgroundColor: '#1f2937',
+                            titleColor: '#f1f5f9',
+                            bodyColor: '#e5e7eb',
+                        }
+                    }
+                }
+            });
+
+            // BAR: Categoria
+            const ctxBar = document.getElementById('barCategoria').getContext('2d');
+            new Chart(ctxBar, {
+                type: 'bar',
+                data: {
+                    labels: catLabels,
+                    datasets: [{
+                        label: 'Chamados',
+                        data: catValues,
+                        backgroundColor: '#10b981', // Cor principal das barras
+                        hoverBackgroundColor: '#059669',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    indexAxis: 'y', // Barras horizontais
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { 
+                            enabled: true,
+                            backgroundColor: '#1f2937',
+                            titleColor: '#f1f5f9',
+                            bodyColor: '#e5e7eb',
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: '#cfcfcf' },
+                            grid: { color: 'rgba(255,255,255,0.05)' }
+                        },
+                        y: {
+                            ticks: { color: '#cfcfcf' },
+                            grid: { color: 'rgba(255,255,255,0.03)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // ----------------------------------------------------
+        // PONTO DE ENTRADA: Iniciar o dashboard após o carregamento
+        // ----------------------------------------------------
+        document.addEventListener('DOMContentLoaded', () => {
+            renderCards(simulatedData);
+            renderTable(simulatedData.recentCalls);
+            initializeCharts(simulatedData);
+        });
+
+    </script>
 </body>
 </html>
