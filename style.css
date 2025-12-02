@@ -115,19 +115,26 @@ body {
 /* ESTILOS EXISTENTES PARA GRÁFICOS E TABELA */
 /* ========================================= */
 
-/* Layout dos Gráficos */
-.graficos {
-    display: flex;
-    gap: 20px;
+/* Container principal dos gráficos e da tabela */
+.charts-container {
+    max-width: 1024px; /* Limita a largura centralizada */
+    margin: 0 auto; /* Centraliza o contêiner */
+    display: flex; /* Usa Flexbox para organizar em coluna */
+    flex-direction: column; /* Coloca os filhos (chart-card e max-w-5xl) em ordem vertical */
+    gap: 2rem; /* Espaçamento entre o bloco de gráficos e a tabela */
 }
 
-.grafico-item {
-    flex: 1;
+/* Layout dos Gráficos (Mantenha o flex para os dois gráficos lado a lado) */
+.graficos {
+    display: flex;
+    gap: 300px;
+    flex-direction: column; /* Padrão Mobile: Coluna */
 }
 
 @media (min-width: 768px) {
-    .charts-container {
-        grid-template-columns: repeat(2, 1fr);
+    /* Em telas maiores, coloca os gráficos lado a lado */
+    .graficos {
+        flex-direction: row; 
     }
 }
 
