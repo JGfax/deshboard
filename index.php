@@ -309,7 +309,7 @@ $conn->close();
     <!-- Footer -->
     <footer class="site-footer">
         <div class="footer-container">
-            <div class="footer-left">© <?php echo date('Y'); ?> Sua Empresa. Todos os direitos reservados.</div>
+            <div class="footer-left">© <?php echo date('Y'); ?> João Gustavo; Manuella Vitoria; Miguel Vinícius; Yasmin Pinesso. </div>
             <div class="footer-right">Última atualização: <?php echo date('d/m/Y H:i'); ?></div>
         </div>
     </footer>
